@@ -1,16 +1,20 @@
-# C# WebAssembly Compiler
+# C# minor
 
-A browser-based C# compiler and execution environment built with Blazor WebAssembly and the Microsoft Roslyn compiler. This project provides a complete C# development environment that runs entirely in the browser, perfect for teaching and learning C# programming.
+A browser-based C# code editor for educational use built with Blazor WebAssembly and the Microsoft Roslyn compiler. This project provides a complete C# development environment that runs entirely in the browser, perfect for teaching and learning C# programming.
+
+## 🎯 Live Demo
+
+Try it online: [https://microsoftlearning.github.io/c-sharp-minor/](https://microsoftlearning.github.io/c-sharp-minor/)
 
 ## ✨ Features
 
 - **Real C# Compilation**: Uses Microsoft Roslyn compiler for authentic C# compilation
 - **WebAssembly Execution**: Runs compiled C# code directly in the browser using .NET WebAssembly
+- **Educational Design**: Clean, intuitive interface designed specifically for learning
+- **Progressive Complexity**: Toggle between simplified and full code views
+- **Sample Code**: Built-in examples to help students get started
+- **Clean Output**: Optional system message filtering for distraction-free learning
 - **No External Dependencies**: Self-contained solution that doesn't rely on external services
-- **Educational Focus**: Clean, simple interface designed for teaching and learning
-- **Modern UI**: Responsive design with split-pane editor and console output
-- **Educational Focus**: Perfect for teaching C# programming concepts
-- **No External Dependencies**: Everything runs locally in the browser
 
 ## 🚀 Quick Start
 
