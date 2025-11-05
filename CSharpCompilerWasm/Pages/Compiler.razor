@@ -50,11 +50,20 @@
     <div class="output-section">
         <div class="section-header">
             <span>📺 Output Console</span>
-            <button class="btn btn-outline-secondary btn-sm" @onclick="ClearOutput">Clear</button>
+            <div class="console-controls">
+                <div class="toggle-container">
+                    <label class="toggle-switch" title="Show system output">
+                        <input type="checkbox" checked="@showSystemOutput" @onchange="OnSystemOutputToggleChanged" />
+                        <span class="toggle-slider"></span>
+                        <span class="toggle-label">[*]</span>
+                    </label>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearOutput">Clear</button>
+            </div>
         </div>
         <div class="output-container">
             <div class="output-content" id="output">
-                @((MarkupString)output)
+                @((MarkupString)GetDisplayOutput())
             </div>
         </div>
     </div>
@@ -138,6 +147,12 @@
         display: flex;
         align-items: center;
         gap: 0.5rem;
+    }
+
+    .console-controls {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
     }
 
     .toggle-switch {
@@ -327,8 +342,19 @@ public class Program
 <span class='success'>✓ All dependencies packaged as .wasm files</span><br/><br/>
 <span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
 ";
+    private string systemOutput = @"<span class='info'>Real Blazor WebAssembly C# Compiler Ready!</span><br/>
+<span class='info'>This environment provides:</span><br/>
+<span class='success'>✓ Real Roslyn C# compilation in WebAssembly</span><br/>
+<span class='success'>✓ Authentic .NET runtime execution</span><br/>
+<span class='success'>✓ Full C# language support</span><br/>
+<span class='success'>✓ True compilation error reporting</span><br/>
+<span class='success'>✓ All dependencies packaged as .wasm files</span><br/><br/>
+<span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
+";
+    private string userOutput = "";
     private bool isCompiling = false;
     private bool showFullCode = false;
+    private bool showSystemOutput = false;
     private string displayCode = @"Console.WriteLine(""Hello from C# WebAssembly!"");
 Console.WriteLine(""This code runs real C# compilation and execution in your browser."");
 Console.WriteLine();
@@ -389,7 +415,7 @@ Console.WriteLine(""C# compilation successful!"");";
                 AddOutput("--- Program Output ---", "info");
                 
                 var executionResult = await ExecuteAssembly(result.Assembly!);
-                AddOutput(executionResult, "");
+                AddUserOutput(executionResult);
                 AddOutput("--- End of Output ---", "info");
                 AddOutput(".NET WebAssembly execution completed successfully!", "success");
             }
@@ -419,11 +445,42 @@ Console.WriteLine(""C# compilation successful!"");";
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
         output += line;
+        systemOutput += line;
+    }
+
+    private void AddUserOutput(string text)
+    {
+        var line = text.Replace("\n", "<br/>");
+        if (!string.IsNullOrEmpty(line))
+        {
+            userOutput += line + "<br/>";
+            output += line + "<br/>";
+        }
+    }
+
+    private string GetDisplayOutput()
+    {
+        if (showSystemOutput)
+        {
+            return output;
+        }
+        else
+        {
+            return string.IsNullOrEmpty(userOutput) ? "" : userOutput;
+        }
+    }
+
+    private void OnSystemOutputToggleChanged(ChangeEventArgs e)
+    {
+        showSystemOutput = e.Value as bool? ?? false;
+        StateHasChanged();
     }
 
     private void ClearOutput()
     {
         output = "";
+        systemOutput = "";
+        userOutput = "";
     }
 
     private void OnCodeChanged(ChangeEventArgs e)
