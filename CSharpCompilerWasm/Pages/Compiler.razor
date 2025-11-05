@@ -7,77 +7,164 @@
 @using System.Reflection
 @using System.Text
 @using Microsoft.JSInterop
+@using Microsoft.AspNetCore.Components.Web
 @inject IJSRuntime JSRuntime
 
 <PageTitle>C# minor</PageTitle>
 
-<div class="compiler-container">
+<!-- Skip link for keyboard navigation -->
+<a href="#code-editor" class="skip-link">Skip to code editor</a>
+
+<div class="compiler-container" role="application" aria-label="C# Code Editor Application">
     <!-- Header with title -->
-    <div class="header">
+    <header class="header" role="banner">
         <div class="header-content">
-            <h1>C# minor</h1>
-            <p class="subheading">A C# code editor for educational use</p>
+            <h1 id="main-title">C# minor</h1>
+            <p class="subheading" aria-describedby="main-title">A C# code editor for educational use</p>
         </div>
-    </div>
+    </header>
 
     <!-- Code Editor Section -->
-    <div class="editor-section">
+    <section class="editor-section" role="main" aria-labelledby="editor-heading">
         <div class="section-header">
-            <span>📝 C# Code Editor</span>
-            <div class="editor-controls">
-                <button class="btn btn-outline-secondary btn-sm" @onclick="LoadSampleCode" title="Sample code">
-                    📄 Sample
+            <h3 id="editor-heading">📝 C# Code Editor</h3>
+            <div class="editor-controls" role="toolbar" aria-label="Editor controls">
+                <button class="btn btn-outline-secondary btn-sm" 
+                        @onclick="LoadSampleCode" 
+                        @onkeydown="@(async (e) => await HandleKeyDown(e, LoadSampleCode))"
+                        title="Load sample code"
+                        aria-label="Load sample C# code example"
+                        aria-describedby="sample-code-desc">
+                    <span aria-hidden="true">📄</span> Sample
                 </button>
+                <div id="sample-code-desc" class="sr-only">Loads a comprehensive C# code example with variables, loops, and console output</div>
                 <div class="toggle-container">
-                    <label class="toggle-switch" title="Show all code">
-                        <input type="checkbox" checked="@showFullCode" @onchange="OnToggleChanged" />
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">{..}</span>
+                    <label class="toggle-switch" 
+                           aria-label="Toggle between simplified and full code view"
+                           aria-describedby="code-view-desc">
+                        <input type="checkbox" 
+                               checked="@showFullCode" 
+                               @onchange="OnToggleChanged"
+                               @onkeydown="@(async (e) => await HandleToggleKeyDown(e, OnToggleChanged))"
+                               aria-describedby="code-view-desc"
+                               role="switch"
+                               aria-checked="@showFullCode" />
+                        <span class="toggle-slider" aria-hidden="true"></span>
+                        <span class="toggle-label" aria-hidden="true">{..}</span>
                     </label>
+                    <div id="code-view-desc" class="sr-only">
+                        @if (showFullCode)
+                        {
+                            <text>Currently showing full code with using statements and class structure. Toggle to show simplified code view.</text>
+                        }
+                        else
+                        {
+                            <text>Currently showing simplified code view with just the main method content. Toggle to show full code structure.</text>
+                        }
+                    </div>
                 </div>
             </div>
         </div>
         <div class="editor-container">
-            <textarea @bind="displayCode" @bind:event="oninput" class="code-editor" 
-                      placeholder="Write your C# code here..." spellcheck="false"></textarea>
+            <label for="code-editor" class="sr-only">C# Code Editor</label>
+            <textarea id="code-editor"
+                      @bind="displayCode" 
+                      @bind:event="oninput" 
+                      @onkeydown="HandleEditorKeyDown"
+                      class="code-editor" 
+                      placeholder="Write your C# code here..."
+                      spellcheck="false"
+                      aria-label="C# code editor"
+                      aria-describedby="editor-instructions"
+                      role="textbox"
+                      aria-multiline="true"
+                      rows="15"></textarea>
+            <div id="editor-instructions" class="sr-only">
+                Type your C# code here. Press Ctrl+Enter to compile and run. Use the Sample button to load example code.
+            </div>
         </div>
-    </div>
+    </section>
 
     <!-- Compile Button Section -->
-    <div class="compile-section">
-        <button class="btn btn-primary compile-btn" @onclick="CompileAndRun" disabled="@isCompiling" title="Compile and run">
+    <section class="compile-section" role="region" aria-labelledby="compile-heading">
+        <h3 id="compile-heading" class="sr-only">Compile and Run</h3>
+        <button class="btn btn-primary compile-btn" 
+                @onclick="CompileAndRun" 
+                @onkeydown="@(async (e) => await HandleKeyDown(e, CompileAndRun))"
+                disabled="@isCompiling" 
+                aria-label="@GetCompileButtonLabel()"
+                aria-describedby="compile-instructions"
+                aria-live="polite">
             @if (isCompiling)
             {
-                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="spinner-border spinner-border-sm" role="status" aria-label="Compiling..."></span>
             }
             else
             {
-                <span>▶️</span>
+                <span aria-hidden="true">&#9654;</span>
             }
         </button>
-    </div>
+        <div id="compile-instructions" class="sr-only">
+            Compiles your C# code using the Roslyn compiler and executes it in WebAssembly. Keyboard shortcut: Ctrl+Enter from the code editor.
+        </div>
+    </section>
+
 
     <!-- Output Console Section -->
-    <div class="output-section">
+    <section class="output-section" role="region" aria-labelledby="output-heading" aria-live="polite">
         <div class="section-header">
-            <span>📺 Output Console</span>
-            <div class="console-controls">
+            <h3 id="output-heading">&#128468; Output Console</h3>
+            <div class="console-controls" role="toolbar" aria-label="Console controls">
                 <div class="toggle-container">
-                    <label class="toggle-switch" title="Show system output">
-                        <input type="checkbox" checked="@showSystemOutput" @onchange="OnSystemOutputToggleChanged" />
-                        <span class="toggle-slider"></span>
-                        <span class="toggle-label">[*]</span>
+                    <label class="toggle-switch" 
+                           aria-label="Toggle system output visibility"
+                           aria-describedby="system-output-desc">
+                        <input type="checkbox" 
+                               checked="@showSystemOutput" 
+                               @onchange="OnSystemOutputToggleChanged"
+                               @onkeydown="@(async (e) => await HandleToggleKeyDown(e, OnSystemOutputToggleChanged))"
+                               role="switch"
+                               aria-checked="@showSystemOutput"
+                               aria-describedby="system-output-desc" />
+                        <span class="toggle-slider" aria-hidden="true"></span>
+                        <span class="toggle-label" aria-hidden="true">[*]</span>
                     </label>
+                    <div id="system-output-desc" class="sr-only">
+                        @if (showSystemOutput)
+                        {
+                            <text>System output is visible. Shows compilation messages, timestamps, and debug information along with your program output.</text>
+                        }
+                        else
+                        {
+                            <text>System output is hidden. Shows only your program's console output for a cleaner view.</text>
+                        }
+                    </div>
                 </div>
-                <button class="btn btn-outline-secondary btn-sm" @onclick="ClearOutput">Clear</button>
+                <button class="btn btn-outline-secondary btn-sm" 
+                        @onclick="ClearOutput"
+                        @onkeydown="@(async (e) => await HandleKeyDown(e, ClearOutput))"
+                        aria-label="Clear console output"
+                        aria-describedby="clear-instructions">
+                    Clear
+                </button>
+                <div id="clear-instructions" class="sr-only">Clears all output from the console</div>
             </div>
         </div>
         <div class="output-container">
-            <div class="output-content" id="output">
+            <div class="output-content" 
+                 id="output" 
+                 role="log" 
+                 aria-label="Program output"
+                 aria-describedby="output-instructions"
+                 aria-live="polite"
+                 tabindex="0">
                 @((MarkupString)GetDisplayOutput())
             </div>
+            <div id="output-instructions" class="sr-only">
+                This area displays the results of your compiled C# program. Use the system output toggle to show or hide compilation details.
+            </div>
         </div>
-    </div>
+    </section>
 </div>
 
 <style>
@@ -183,6 +270,12 @@
         color: #495057;
     }
 
+    .section-header h3 {
+        font-size: 1.1rem;
+        margin: 0;
+        font-weight: 600;
+    }
+
     .toggle-container {
         display: flex;
         align-items: center;
@@ -199,6 +292,28 @@
         display: flex;
         align-items: center;
         gap: 1rem;
+    }
+
+    /* Screen reader only content */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    /* Focus indicators for accessibility */
+    .code-editor:focus,
+    .compile-btn:focus,
+    .btn:focus,
+    .toggle-switch input:focus + .toggle-slider {
+        outline: 3px solid #007bff;
+        outline-offset: 2px;
     }
 
     .toggle-switch {
@@ -304,6 +419,29 @@
         padding: 0.4rem 0.8rem;
     }
 
+    /* Output styling */
+    .success { color: #28a745; }
+    .error { color: #dc3545; }
+    .warning { color: #ffc107; }
+    .info { color: #17a2b8; }
+
+    /* Skip link for keyboard navigation */
+    .skip-link {
+        position: absolute;
+        top: -40px;
+        left: 6px;
+        background: #007bff;
+        color: white;
+        padding: 8px;
+        text-decoration: none;
+        border-radius: 0 0 4px 4px;
+        z-index: 1000;
+    }
+
+    .skip-link:focus {
+        top: 0;
+    }
+
     /* Responsive design */
     @@media (max-width: 768px) {
         .header {
@@ -327,11 +465,40 @@
         }
     }
 
-    /* Output styling */
-    .success { color: #28a745; }
-    .error { color: #dc3545; }
-    .warning { color: #ffc107; }
-    .info { color: #17a2b8; }
+    /* High contrast mode support */
+    @@media (prefers-contrast: high) {
+        .header {
+            background: #000;
+            color: #fff;
+            border-bottom: 2px solid #fff;
+        }
+        
+        .section-header {
+            background-color: #f0f0f0;
+            border: 1px solid #000;
+        }
+        
+        .code-editor {
+            border: 2px solid #000;
+            background: #fff;
+            color: #000;
+        }
+        
+        .output-content {
+            border: 2px solid #000;
+            background: #fff;
+        }
+    }
+
+    /* Reduced motion support */
+    @@media (prefers-reduced-motion: reduce) {
+        .compile-btn,
+        .toggle-slider,
+        * {
+            transition: none !important;
+            animation: none !important;
+        }
+    }
 </style>
 
 @code {
@@ -407,6 +574,7 @@ public class Program
 <span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
 ";
     private string userOutput = "";
+    private string errorOutput = "";
     private bool isCompiling = false;
     private bool showFullCode = false;
     private bool showSystemOutput = false;
@@ -442,17 +610,17 @@ public class Program
             }
             else
             {
-                AddOutput("Compilation failed with Roslyn:", "error");
+                AddErrorOutput("Compilation failed with Roslyn:", "error");
                 foreach (var error in result.Errors)
                 {
                     var lineNumber = error.Location.GetLineSpan().StartLinePosition.Line + 1;
-                    AddOutput($"Line {lineNumber}: {error.GetMessage()}", "error");
+                    AddErrorOutput($"Line {lineNumber}: {error.GetMessage()}", "error");
                 }
             }
         }
         catch (Exception ex)
         {
-            AddOutput($"Error: {ex.Message}", "error");
+            AddErrorOutput($"Error: {ex.Message}", "error");
         }
         finally
         {
@@ -465,8 +633,8 @@ public class Program
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
-        output += line;
-        systemOutput += line;
+        output = line + output; // Prepend to top
+        systemOutput = line + systemOutput; // Prepend to top
     }
 
     private void AddUserOutput(string text)
@@ -474,9 +642,19 @@ public class Program
         var line = text.Replace("\n", "<br/>");
         if (!string.IsNullOrEmpty(line))
         {
-            userOutput += line + "<br/>";
-            output += line + "<br/>";
+            var formattedLine = line + "<br/>";
+            userOutput = formattedLine + userOutput; // Prepend to top
+            output = formattedLine + output; // Prepend to top
         }
+    }
+
+    private void AddErrorOutput(string text, string cssClass)
+    {
+        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
+        errorOutput = line + errorOutput; // Prepend to top
+        userOutput = line + userOutput; // Prepend to top to maintain chronological order
+        output = line + output; // Prepend to top
     }
 
     private string GetDisplayOutput()
@@ -487,6 +665,7 @@ public class Program
         }
         else
         {
+            // When system output is hidden, show only user output (which includes errors in chronological order)
             return string.IsNullOrEmpty(userOutput) ? "" : userOutput;
         }
     }
@@ -502,6 +681,7 @@ public class Program
         output = "";
         systemOutput = "";
         userOutput = "";
+        errorOutput = "";
     }
 
     private void OnCodeChanged(ChangeEventArgs e)
@@ -646,6 +826,59 @@ public class Program
         // Update the display based on current toggle state
         UpdateDisplayCode();
         StateHasChanged();
+    }
+
+    // Accessibility helper methods
+    private string GetCompileButtonLabel()
+    {
+        return isCompiling ? "Currently compiling your C# code, please wait" : "Compile and run your C# code";
+    }
+
+    // Keyboard navigation handlers
+    private async Task HandleKeyDown(KeyboardEventArgs e, Action action)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            action.Invoke();
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e, Func<Task> asyncAction)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            await asyncAction();
+        }
+    }
+
+    private async Task HandleToggleKeyDown(KeyboardEventArgs e, Action<ChangeEventArgs> toggleAction)
+    {
+        // Simplified keyboard handler for toggles
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            StateHasChanged();
+            await Task.CompletedTask;
+        }
+    }
+
+    private async Task HandleEditorKeyDown(KeyboardEventArgs e)
+    {
+        // Ctrl+Enter to compile and run
+        if (e.CtrlKey && e.Key == "Enter")
+        {
+            await CompileAndRun();
+        }
+        // Ctrl+L to load sample code
+        else if (e.CtrlKey && e.Key == "l")
+        {
+            LoadSampleCode();
+        }
+        // Ctrl+K to clear output
+        else if (e.CtrlKey && e.Key == "k")
+        {
+            ClearOutput();
+        }
     }
 
     private Task<CompilationResult> CompileCSharpCode(string code)
@@ -856,7 +1089,7 @@ public static class Console
                         }
                         catch (Exception ex)
                         {
-                            AddOutput($"Error loading from {prop.Name}: {ex.Message}", "error");
+                            AddErrorOutput($"Error loading from {prop.Name}: {ex.Message}", "error");
                         }
                     }
                     
@@ -874,21 +1107,21 @@ public static class Console
                         }
                         catch (Exception ex)
                         {
-                            AddOutput($"Error loading {prop.Name}: {ex.Message}", "error");
+                            AddErrorOutput($"Error loading {prop.Name}: {ex.Message}", "error");
                         }
                     }
                 }
                 else
                 {
-                    AddOutput("References nested type not found", "error");
+                    AddErrorOutput("References nested type not found", "error");
                 }
                 
                 AddOutput($"Total references loaded: {references.Count}", references.Count > 0 ? "success" : "warning");
             }
             catch (Exception ex)
             {
-                AddOutput($"Basic.Reference.Assemblies.Net90 failed: {ex.Message}", "error");
-                AddOutput($"Exception details: {ex.GetType().Name}", "error");
+                AddErrorOutput($"Basic.Reference.Assemblies.Net90 failed: {ex.Message}", "error");
+                AddErrorOutput($"Exception details: {ex.GetType().Name}", "error");
             }
             
             // Method 2: If no references loaded, show what we're working with
@@ -932,22 +1165,22 @@ public static class Console
                     .Where(d => d.Severity == DiagnosticSeverity.Error)
                     .ToList();
                 
-                AddOutput($"Compilation failed with {errors.Count} errors", "error");
+                AddErrorOutput($"Compilation failed with {errors.Count} errors", "error");
                 
                 // Group similar errors and show summary
                 var errorGroups = errors.GroupBy(e => e.Id).ToArray();
-                AddOutput("Error summary:", "error");
+                AddErrorOutput("Error summary:", "error");
                 
                 foreach (var group in errorGroups.Take(5)) // Show top 5 error types
                 {
                     var firstError = group.First();
                     var count = group.Count();
-                    AddOutput($"  {group.Key}: {firstError.GetMessage()} ({count} occurrences)", "error");
+                    AddErrorOutput($"  {group.Key}: {firstError.GetMessage()} ({count} occurrences)", "error");
                 }
                 
                 if (errorGroups.Length > 5)
                 {
-                    AddOutput($"  ... and {errorGroups.Length - 5} other error types", "error");
+                    AddErrorOutput($"  ... and {errorGroups.Length - 5} other error types", "error");
                 }
                 
                 return Task.FromResult(new CompilationResult 
@@ -959,11 +1192,11 @@ public static class Console
         }
         catch (Exception ex)
         {
-            AddOutput($"Compilation exception: {ex.Message}", "error");
-            AddOutput($"Exception type: {ex.GetType().Name}", "error");
+            AddErrorOutput($"Compilation exception: {ex.Message}", "error");
+            AddErrorOutput($"Exception type: {ex.GetType().Name}", "error");
             if (ex.InnerException != null)
             {
-                AddOutput($"Inner exception: {ex.InnerException.Message}", "error");
+                AddErrorOutput($"Inner exception: {ex.InnerException.Message}", "error");
             }
             
             return Task.FromResult(new CompilationResult 
@@ -992,7 +1225,7 @@ public static class Console
         }
         catch (Exception ex)
         {
-            AddOutput($"GetAssemblyBytes error for {assembly.GetName().Name}: {ex.Message}", "error");
+            AddErrorOutput($"GetAssemblyBytes error for {assembly.GetName().Name}: {ex.Message}", "error");
             return null;
         }
     }
@@ -1027,7 +1260,7 @@ public static class Console
                 }
                 else
                 {
-                    AddOutput($"Unsupported Main method signature: {entryPoint}", "error");
+                    AddErrorOutput($"Unsupported Main method signature: {entryPoint}", "error");
                     return Task.FromResult("Error: Unsupported Main method signature");
                 }
             }
@@ -1080,19 +1313,19 @@ public static class Console
         {
             // Unwrap the inner exception to get the real error
             var innerEx = ex.InnerException ?? ex;
-            AddOutput($"Execution error (inner): {innerEx.GetType().Name}: {innerEx.Message}", "error");
+            AddErrorOutput($"Execution error (inner): {innerEx.GetType().Name}: {innerEx.Message}", "error");
             if (innerEx.StackTrace != null)
             {
-                AddOutput($"Stack trace: {innerEx.StackTrace}", "error");
+                AddErrorOutput($"Stack trace: {innerEx.StackTrace}", "error");
             }
             return Task.FromResult($"Execution error: {innerEx.Message}");
         }
         catch (Exception ex)
         {
-            AddOutput($"Execution error: {ex.GetType().Name}: {ex.Message}", "error");
+            AddErrorOutput($"Execution error: {ex.GetType().Name}: {ex.Message}", "error");
             if (ex.StackTrace != null)
             {
-                AddOutput($"Stack trace: {ex.StackTrace}", "error");
+                AddErrorOutput($"Stack trace: {ex.StackTrace}", "error");
             }
             return Task.FromResult($"Execution error: {ex.Message}");
         }
