@@ -95,7 +95,8 @@
                 disabled="@isCompiling" 
                 aria-label="@GetCompileButtonLabel()"
                 aria-describedby="compile-instructions"
-                aria-live="polite">
+                aria-live="polite"
+                title="Compile and run your C# code">
             @if (isCompiling)
             {
                 <span class="spinner-border spinner-border-sm" role="status" aria-label="Compiling..."></span>
