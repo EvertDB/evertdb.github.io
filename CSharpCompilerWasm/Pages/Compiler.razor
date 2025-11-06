@@ -12,6 +12,15 @@
 
 <PageTitle>C# minor</PageTitle>
 
+<script>
+    window.scrollToBottom = (elementId) => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.scrollTop = element.scrollHeight;
+        }
+    };
+</script>
+
 <!-- Skip link for keyboard navigation -->
 <a href="#code-editor" class="skip-link">Skip to code editor</a>
 
@@ -588,6 +597,7 @@ public class Program
         isCompiling = true;
         AddOutput("Compiling C# code with real Roslyn compiler...", "info");
         StateHasChanged();
+        await ScrollToBottom();
 
         try
         {
@@ -603,27 +613,47 @@ public class Program
             if (result.Success)
             {
                 AddOutput("Roslyn compilation successful!", "success");
+                StateHasChanged();
+                await ScrollToBottom();
+                
                 AddOutput("Executing compiled assembly in .NET WebAssembly...", "info");
+                StateHasChanged();
+                await ScrollToBottom();
+                
                 AddOutput("--- Program Output ---", "info");
+                StateHasChanged();
+                await ScrollToBottom();
                 
                 var executionResult = await ExecuteAssembly(result.Assembly!);
                 AddUserOutput(executionResult);
+                StateHasChanged();
+                await ScrollToBottom();
+                
                 AddOutput("--- End of Output ---", "info");
                 AddOutput(".NET WebAssembly execution completed successfully!", "success");
+                StateHasChanged();
+                await ScrollToBottom();
             }
             else
             {
                 AddErrorOutput("Compilation failed with Roslyn:", "error");
+                StateHasChanged();
+                await ScrollToBottom();
+                
                 foreach (var error in result.Errors)
                 {
                     var lineNumber = error.Location.GetLineSpan().StartLinePosition.Line + 1;
                     AddErrorOutput($"Line {lineNumber}: {error.GetMessage()}", "error");
                 }
+                StateHasChanged();
+                await ScrollToBottom();
             }
         }
         catch (Exception ex)
         {
             AddErrorOutput($"Error: {ex.Message}", "error");
+            StateHasChanged();
+            await ScrollToBottom();
         }
         finally
         {
@@ -636,8 +666,8 @@ public class Program
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
-        output = line + output; // Prepend to top
-        systemOutput = line + systemOutput; // Prepend to top
+        output += line; // Append to bottom
+        systemOutput += line; // Append to bottom
     }
 
     private void AddUserOutput(string text)
@@ -646,8 +676,8 @@ public class Program
         if (!string.IsNullOrEmpty(line))
         {
             var formattedLine = line + "<br/>";
-            userOutput = formattedLine + userOutput; // Prepend to top
-            output = formattedLine + output; // Prepend to top
+            userOutput += formattedLine; // Append to bottom
+            output += formattedLine; // Append to bottom
         }
     }
 
@@ -655,9 +685,9 @@ public class Program
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
-        errorOutput = line + errorOutput; // Prepend to top
-        userOutput = line + userOutput; // Prepend to top to maintain chronological order
-        output = line + output; // Prepend to top
+        errorOutput += line; // Append to bottom
+        userOutput += line; // Append to bottom to maintain chronological order
+        output += line; // Append to bottom
     }
 
     private string GetDisplayOutput()
@@ -677,6 +707,7 @@ public class Program
     {
         showSystemOutput = e.Value as bool? ?? false;
         StateHasChanged();
+        _ = ScrollToBottom(); // Fire and forget
     }
 
     private void ClearOutput()
@@ -685,6 +716,19 @@ public class Program
         systemOutput = "";
         userOutput = "";
         errorOutput = "";
+        StateHasChanged();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToBottom", "output");
+        }
+        catch (Exception)
+        {
+            // Ignore JavaScript errors (e.g., during prerendering)
+        }
     }
 
     private void OnCodeChanged(ChangeEventArgs e)
