@@ -19,6 +19,77 @@
             element.scrollTop = element.scrollHeight;
         }
     };
+
+    window.promptForInput = async (promptText) => {
+        return new Promise((resolve) => {
+            // Create input UI in the console
+            const outputElement = document.getElementById('output');
+            if (outputElement) {
+                // Add the prompt text
+                const promptDiv = document.createElement('div');
+                promptDiv.innerHTML = promptText;
+                promptDiv.style.color = '#17a2b8';
+                promptDiv.style.display = 'inline';
+                outputElement.appendChild(promptDiv);
+                
+                // Create input field
+                const inputField = document.createElement('input');
+                inputField.type = 'text';
+                inputField.style.backgroundColor = '#0d1117';
+                inputField.style.color = '#f0f6fc';
+                inputField.style.border = '1px solid #30363d';
+                inputField.style.borderRadius = '4px';
+                inputField.style.padding = '4px 8px';
+                inputField.style.fontFamily = "'Consolas', 'Monaco', 'Courier New', monospace";
+                inputField.style.fontSize = '13px';
+                inputField.style.marginLeft = '5px';
+                inputField.style.outline = 'none';
+                inputField.style.minWidth = '200px';
+                
+                // Focus styling
+                inputField.addEventListener('focus', () => {
+                    inputField.style.borderColor = '#007bff';
+                    inputField.style.boxShadow = '0 0 0 2px rgba(0, 123, 255, 0.25)';
+                });
+                
+                inputField.addEventListener('blur', () => {
+                    inputField.style.borderColor = '#30363d';
+                    inputField.style.boxShadow = 'none';
+                });
+                
+                // Handle input submission
+                inputField.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const value = inputField.value;
+                        
+                        // Replace input field with the entered value
+                        const valueSpan = document.createElement('span');
+                        valueSpan.textContent = value;
+                        valueSpan.style.color = '#f0f6fc';
+                        inputField.parentNode.replaceChild(valueSpan, inputField);
+                        
+                        // Add line break
+                        const br = document.createElement('br');
+                        outputElement.appendChild(br);
+                        
+                        // Scroll to bottom
+                        window.scrollToBottom('output');
+                        
+                        resolve(value);
+                    }
+                });
+                
+                outputElement.appendChild(inputField);
+                
+                // Focus the input field and scroll to bottom
+                inputField.focus();
+                window.scrollToBottom('output');
+            } else {
+                // Fallback to browser prompt
+                resolve(prompt(promptText) || '');
+            }
+        });
+    };
 </script>
 
 <!-- Skip link for keyboard navigation -->
@@ -533,6 +604,12 @@ public class Program
         Console.WriteLine(""This code runs real C# compilation and execution in your browser."");
         Console.WriteLine();
         
+        // Interactive input example
+        Console.Write(""What is your name? "");
+        string name = Console.ReadLine();
+        Console.WriteLine($""Hello, {name}! Nice to meet you."");
+        Console.WriteLine();
+        
         // Basic variables
         string language = ""C#"";
         int year = 2025;
@@ -545,14 +622,18 @@ public class Program
         Console.WriteLine($""Grade: {grade}"");
         Console.WriteLine();
         
-        // Character and string examples
-        Console.Write('H');
-        Console.Write('e');
-        Console.Write('l');
-        Console.Write('l');
-        Console.Write('o');
-        Console.Write(' ');
-        Console.WriteLine(""World!"");
+        // Another interactive example
+        Console.Write(""Enter a number: "");
+        string numberInput = Console.ReadLine();
+        if (int.TryParse(numberInput, out int number))
+        {
+            Console.WriteLine($""You entered: {number}"");
+            Console.WriteLine($""Double that number is: {number * 2}"");
+        }
+        else
+        {
+            Console.WriteLine(""That wasn't a valid number!"");
+        }
         Console.WriteLine();
         
         // Simple loop
@@ -573,7 +654,8 @@ public class Program
 <span class='success'>✓ Authentic .NET runtime execution</span><br/>
 <span class='success'>✓ Full C# language support</span><br/>
 <span class='success'>✓ True compilation error reporting</span><br/>
-<span class='success'>✓ All dependencies packaged as .wasm files</span><br/><br/>
+<span class='success'>✓ All dependencies packaged as .wasm files</span><br/>
+<span class='warning'>⚠ Console.ReadLine() detection (interactive input in development)</span><br/><br/>
 <span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
 ";
     private string systemOutput = @"<span class='info'>Real Blazor WebAssembly C# Compiler Ready!</span><br/>
@@ -582,7 +664,8 @@ public class Program
 <span class='success'>✓ Authentic .NET runtime execution</span><br/>
 <span class='success'>✓ Full C# language support</span><br/>
 <span class='success'>✓ True compilation error reporting</span><br/>
-<span class='success'>✓ All dependencies packaged as .wasm files</span><br/><br/>
+<span class='success'>✓ All dependencies packaged as .wasm files</span><br/>
+<span class='warning'>⚠ Console.ReadLine() detection (interactive input in development)</span><br/><br/>
 <span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
 ";
     private string userOutput = "";
@@ -962,6 +1045,7 @@ public class Program
 public static class Console
 {
     private static System.Text.StringBuilder _output = new System.Text.StringBuilder();
+    private static System.Collections.Generic.Queue<string> _inputQueue = new System.Collections.Generic.Queue<string>();
     
     public static void WriteLine()
     {
@@ -1058,6 +1142,13 @@ public static class Console
         _output.Append(value.ToString());
     }
     
+    public static string ReadLine()
+    {
+        // This method will be intercepted by the WebAssembly environment
+        // and handled through JavaScript interaction
+        throw new System.NotImplementedException(""ReadLine requires interactive input support"");
+    }
+    
     internal static string GetCapturedOutput()
     {
         return _output.ToString();
@@ -1066,6 +1157,22 @@ public static class Console
     internal static void ClearOutput()
     {
         _output.Clear();
+        _inputQueue.Clear();
+    }
+    
+    internal static void AddInputLine(string input)
+    {
+        _inputQueue.Enqueue(input ?? """");
+    }
+    
+    internal static bool HasPendingInput()
+    {
+        return _inputQueue.Count > 0;
+    }
+    
+    internal static string GetNextInput()
+    {
+        return _inputQueue.Count > 0 ? _inputQueue.Dequeue() : """";
     }
 }
 ";
@@ -1277,7 +1384,7 @@ public static class Console
         }
     }
 
-    private Task<string> ExecuteAssembly(Assembly assembly)
+    private async Task<string> ExecuteAssembly(Assembly assembly)
     {
         try
         {
@@ -1289,27 +1396,13 @@ public static class Console
                 clearMethod?.Invoke(null, null);
             }
             
-            // Find and execute the Main method with proper parameter handling
+            // Find the Main method
             var entryPoint = assembly.EntryPoint;
+            MethodInfo? mainMethod = null;
+            
             if (entryPoint != null)
             {
-                // Check the parameter signature of the entry point
-                var parameters = entryPoint.GetParameters();
-                if (parameters.Length == 0)
-                {
-                    // Main() with no parameters
-                    entryPoint.Invoke(null, null);
-                }
-                else if (parameters.Length == 1 && parameters[0].ParameterType == typeof(string[]))
-                {
-                    // Main(string[] args) 
-                    entryPoint.Invoke(null, new object[] { new string[0] });
-                }
-                else
-                {
-                    AddErrorOutput($"Unsupported Main method signature: {entryPoint}", "error");
-                    return Task.FromResult("Error: Unsupported Main method signature");
-                }
+                mainMethod = entryPoint;
             }
             else
             {
@@ -1318,43 +1411,59 @@ public static class Console
                 if (programType != null)
                 {
                     // Try Main() first
-                    var mainMethod = programType.GetMethod("Main", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
-                    if (mainMethod != null)
-                    {
-                        mainMethod.Invoke(null, null);
-                    }
-                    else
+                    mainMethod = programType.GetMethod("Main", BindingFlags.Static | BindingFlags.Public, null, Type.EmptyTypes, null);
+                    if (mainMethod == null)
                     {
                         // Try Main(string[])
                         mainMethod = programType.GetMethod("Main", BindingFlags.Static | BindingFlags.Public, null, new[] { typeof(string[]) }, null);
-                        if (mainMethod != null)
-                        {
-                            mainMethod.Invoke(null, new object[] { new string[0] });
-                        }
-                        else
-                        {
-                            return Task.FromResult("Error: No suitable Main method found");
-                        }
                     }
-                }
-                else
-                {
-                    return Task.FromResult("Error: No Program class found");
                 }
             }
             
-            // Get output from our custom Console
+            if (mainMethod == null)
+            {
+                return "Error: No suitable Main method found";
+            }
+            
+            // Execute in a way that can handle Console.ReadLine() interactively
+            try
+            {
+                // Check the parameter signature of the main method
+                var parameters = mainMethod.GetParameters();
+                object?[] args = parameters.Length == 0 ? null : new object[] { new string[0] };
+                
+                // Use Task.Run to handle potential async operations during execution
+                await Task.Run(() =>
+                {
+                    try
+                    {
+                        mainMethod.Invoke(null, args);
+                    }
+                    catch (TargetInvocationException ex) when (ex.InnerException?.Message.Contains("ReadLine requires interactive input") == true)
+                    {
+                        // This means the program tried to call ReadLine - we need to handle this interactively
+                        throw new InvalidOperationException("Program requires interactive input - ReadLine() calls detected");
+                    }
+                });
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("ReadLine() calls detected"))
+            {
+                // The program contains ReadLine calls - we need to execute it interactively
+                return await ExecuteAssemblyInteractively(assembly, mainMethod);
+            }
+            
+            // Get output from our custom Console if execution completed without ReadLine
             if (consoleType != null)
             {
                 var getOutputMethod = consoleType.GetMethod("GetCapturedOutput", BindingFlags.Static | BindingFlags.NonPublic);
                 if (getOutputMethod != null)
                 {
                     var output = getOutputMethod.Invoke(null, null) as string;
-                    return Task.FromResult(output ?? "");
+                    return output ?? "";
                 }
             }
             
-            return Task.FromResult("Program executed successfully (no output captured)");
+            return "Program executed successfully (no output captured)";
         }
         catch (TargetInvocationException ex)
         {
@@ -1365,7 +1474,7 @@ public static class Console
             {
                 AddErrorOutput($"Stack trace: {innerEx.StackTrace}", "error");
             }
-            return Task.FromResult($"Execution error: {innerEx.Message}");
+            return $"Execution error: {innerEx.Message}";
         }
         catch (Exception ex)
         {
@@ -1374,8 +1483,24 @@ public static class Console
             {
                 AddErrorOutput($"Stack trace: {ex.StackTrace}", "error");
             }
-            return Task.FromResult($"Execution error: {ex.Message}");
+            return $"Execution error: {ex.Message}";
         }
+    }
+
+    private async Task<string> ExecuteAssemblyInteractively(Assembly assembly, MethodInfo mainMethod)
+    {
+        // For now, show a message that ReadLine is detected and provide guidance
+        AddUserOutput("⚠️  Interactive Input Detected!");
+        AddUserOutput("This program uses Console.ReadLine() which requires user input.");
+        AddUserOutput("Interactive input support is currently in development.");
+        AddUserOutput("");
+        AddUserOutput("For now, you can modify your code to use predefined values instead of ReadLine().");
+        AddUserOutput("Example:");
+        AddUserOutput("  // Instead of: string name = Console.ReadLine();");
+        AddUserOutput("  string name = \"User\"; // Use a predefined value");
+        AddUserOutput("");
+        
+        return "Program execution paused - interactive input required";
     }
 
     private class CompilationResult
