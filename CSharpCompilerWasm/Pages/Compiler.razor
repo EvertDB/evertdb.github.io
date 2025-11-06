@@ -1054,7 +1054,7 @@ public static class Console
     
     public static void WriteLine(string value)
     {
-        _output.AppendLine(value ?? """""""");
+        _output.AppendLine(value ?? """");
     }
     
     public static void WriteLine(char value)
@@ -1064,7 +1064,7 @@ public static class Console
     
     public static void WriteLine(object value)
     {
-        _output.AppendLine(value?.ToString() ?? """""""");
+        _output.AppendLine(value?.ToString() ?? """");
     }
     
     public static void WriteLine(int value)
@@ -1099,7 +1099,7 @@ public static class Console
     
     public static void Write(string value)
     {
-        _output.Append(value ?? """""""");
+        _output.Append(value ?? """");
     }
     
     public static void Write(char value)
@@ -1109,7 +1109,7 @@ public static class Console
     
     public static void Write(object value)
     {
-        _output.Append(value?.ToString() ?? """""""");
+        _output.Append(value?.ToString() ?? """");
     }
     
     public static void Write(int value)
@@ -1144,14 +1144,11 @@ public static class Console
     
     public static string ReadLine()
     {
-        // This method will be intercepted by the WebAssembly environment
-        // and handled through JavaScript interaction
         if (_inputQueue.Count > 0)
         {
             return _inputQueue.Dequeue();
         }
         
-        // Signal that interactive input is needed
         throw new System.InvalidOperationException(""READLINE_INPUT_REQUIRED"");
     }
     
@@ -1168,7 +1165,7 @@ public static class Console
     
     internal static void AddInputLine(string input)
     {
-        _inputQueue.Enqueue(input ?? """""""");
+        _inputQueue.Enqueue(input ?? """");
     }
     
     internal static bool HasPendingInput()
@@ -1178,7 +1175,7 @@ public static class Console
     
     internal static string GetNextInput()
     {
-        return _inputQueue.Count > 0 ? _inputQueue.Dequeue() : """""""";
+        return _inputQueue.Count > 0 ? _inputQueue.Dequeue() : """";
     }
 }
 ";
