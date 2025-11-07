@@ -20,28 +20,26 @@
         }
     };
 
-    window.promptForInput = async (promptText) => {
+
+
+    window.promptForInput = async (newOutputText) => {
         return new Promise((resolve) => {
-            // Create input UI in the console
             const outputElement = document.getElementById('output');
             if (outputElement) {
+                // Don't display output yet - just collect the input
+                // We'll display everything at the end when the program completes
+                
                 // Create a container for the input line
                 const inputContainer = document.createElement('div');
+                inputContainer.className = 'interactive-output';
                 inputContainer.style.display = 'flex';
                 inputContainer.style.alignItems = 'center';
                 inputContainer.style.width = '100%';
-                
-                // Add the prompt text
-                const promptDiv = document.createElement('span');
-                promptDiv.innerHTML = promptText;
-                promptDiv.style.color = '#17a2b8';
-                inputContainer.appendChild(promptDiv);
                 
                 // Add the ">" indicator
                 const promptIndicator = document.createElement('span');
                 promptIndicator.textContent = '>';
                 promptIndicator.style.color = '#f0f6fc';
-                promptIndicator.style.marginLeft = '5px';
                 promptIndicator.style.marginRight = '5px';
                 promptIndicator.style.fontFamily = "'Consolas', 'Monaco', 'Courier New', monospace";
                 promptIndicator.style.fontSize = '13px';
@@ -66,18 +64,8 @@
                     if (e.key === 'Enter') {
                         const value = inputField.value;
                         
-                        // Replace input field with the entered value
-                        const valueSpan = document.createElement('span');
-                        valueSpan.textContent = value;
-                        valueSpan.style.color = '#f0f6fc';
-                        inputField.parentNode.replaceChild(valueSpan, inputField);
-                        
-                        // Add line break after the container (container is already in the DOM)
-                        const br = document.createElement('br');
-                        inputContainer.parentNode.insertBefore(br, inputContainer.nextSibling);
-                        
-                        // Scroll to bottom
-                        window.scrollToBottom('output');
+                        // Remove the input container completely - don't show anything yet
+                        inputContainer.remove();
                         
                         resolve(value);
                     }
@@ -94,9 +82,27 @@
                 window.scrollToBottom('output');
             } else {
                 // Fallback to browser prompt
-                resolve(prompt(promptText) || '');
+                resolve(prompt(newOutputText) || '');
             }
         });
+    };
+    
+    window.clearInteractiveOutput = () => {
+        const outputElement = document.getElementById('output');
+        if (outputElement) {
+            const interactiveElements = outputElement.querySelectorAll('.interactive-output');
+            interactiveElements.forEach(el => el.remove());
+        }
+    };
+    
+    window.clearAllOutput = () => {
+        const outputElement = document.getElementById('output');
+        if (outputElement) {
+            // Remove ALL children, not just interactive ones
+            while (outputElement.firstChild) {
+                outputElement.removeChild(outputElement.firstChild);
+            }
+        }
     };
 </script>
 
@@ -249,7 +255,10 @@
                  aria-describedby="output-instructions"
                  aria-live="polite"
                  tabindex="0">
-                @((MarkupString)GetDisplayOutput())
+                @if (!string.IsNullOrEmpty(GetDisplayOutput()))
+                {
+                    @((MarkupString)GetDisplayOutput())
+                }
             </div>
             <div id="output-instructions" class="sr-only">
                 This area displays the results of your compiled C# program. Use the system output toggle to show or hide compilation details.
@@ -656,42 +665,58 @@ public class Program
     }
 }";
 
-    private string output = @"<span class='info'>Real Blazor WebAssembly C# Compiler Ready!</span><br/>
-<span class='info'>This environment provides:</span><br/>
-<span class='success'>✓ Real Roslyn C# compilation in WebAssembly</span><br/>
-<span class='success'>✓ Authentic .NET runtime execution</span><br/>
-<span class='success'>✓ Full C# language support</span><br/>
-<span class='success'>✓ True compilation error reporting</span><br/>
-<span class='success'>✓ All dependencies packaged as .wasm files</span><br/>
-<span class='success'>✓ Real Console.ReadLine() interactive input</span><br/><br/>
-<span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
-";
-    private string systemOutput = @"<span class='info'>Real Blazor WebAssembly C# Compiler Ready!</span><br/>
-<span class='info'>This environment provides:</span><br/>
-<span class='success'>✓ Real Roslyn C# compilation in WebAssembly</span><br/>
-<span class='success'>✓ Authentic .NET runtime execution</span><br/>
-<span class='success'>✓ Full C# language support</span><br/>
-<span class='success'>✓ True compilation error reporting</span><br/>
-<span class='success'>✓ All dependencies packaged as .wasm files</span><br/>
-<span class='success'>✓ Real Console.ReadLine() interactive input</span><br/><br/>
-<span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
-";
+    private string output = "";
+    private string systemOutput = "";
     private string userOutput = "";
     private string errorOutput = "";
     private bool isCompiling = false;
     private bool showFullCode = false;
     private bool showSystemOutput = false;
     private string displayCode = "";
+    
+    private const string WelcomeMessage = @"<span class='info'>Real Blazor WebAssembly C# Compiler Ready!</span><br/>
+<span class='info'>This environment provides:</span><br/>
+<span class='success'>✓ Real Roslyn C# compilation in WebAssembly</span><br/>
+<span class='success'>✓ Authentic .NET runtime execution</span><br/>
+<span class='success'>✓ Full C# language support</span><br/>
+<span class='success'>✓ True compilation error reporting</span><br/>
+<span class='success'>✓ All dependencies packaged as .wasm files</span><br/>
+<span class='success'>✓ Real Console.ReadLine() interactive input</span><br/><br/>
+<span class='info'>Click 'Compile & Run' to execute your C# code!</span><br/>
+";
 
     private async Task CompileAndRun()
     {
         isCompiling = true;
+        
+        // When system output is hidden, clear ALL output before we start
+        if (!showSystemOutput)
+        {
+            userOutput = "";
+            errorOutput = "";
+            output = "";  // Also clear the main output variable
+            systemOutput = "";  // Also clear the system output variable
+            StateHasChanged();
+            await Task.Delay(50); // Give Blazor time to actually clear the DOM
+            
+            // Immediately clear the DOM to remove any rendered empty content
+            await JSRuntime.InvokeVoidAsync("clearAllOutput");
+        }
+        
         AddOutput("Compiling C# code with real Roslyn compiler...", "info");
-        StateHasChanged();
-        await ScrollToBottom();
+        
+        // Only update UI if system output is visible
+        if (showSystemOutput)
+        {
+            StateHasChanged();
+            await ScrollToBottom();
+        }
 
         try
         {
+            // Clear ALL output from previous run (not just interactive elements)
+            await JSRuntime.InvokeVoidAsync("clearAllOutput");
+            
             // Ensure we have the current full source code
             if (!showFullCode)
             {
@@ -704,23 +729,14 @@ public class Program
             if (result.Success)
             {
                 AddOutput("Roslyn compilation successful!", "success");
-                StateHasChanged();
-                await ScrollToBottom();
-                
                 AddOutput("Executing compiled assembly in .NET WebAssembly...", "info");
-                StateHasChanged();
-                await ScrollToBottom();
                 
-                AddOutput("--- Program Output ---", "info");
-                StateHasChanged();
-                await ScrollToBottom();
+                // DON'T call StateHasChanged here - we don't want Blazor to render
+                // any of these messages while the interactive execution is happening
                 
                 var executionResult = await ExecuteAssembly(result.Assembly!);
-                AddUserOutput(executionResult);
-                StateHasChanged();
-                await ScrollToBottom();
                 
-                AddOutput("--- End of Output ---", "info");
+                // Now that interactive execution is done, add completion message
                 AddOutput(".NET WebAssembly execution completed successfully!", "success");
                 StateHasChanged();
                 await ScrollToBottom();
@@ -757,8 +773,13 @@ public class Program
     {
         var timestamp = DateTime.Now.ToString("HH:mm:ss");
         var line = $"<span class='{cssClass}'>[{timestamp}] {text.Replace("\n", "<br/>")}</span><br/>";
-        output += line; // Append to bottom
-        systemOutput += line; // Append to bottom
+        
+        // Only add to output if system output is enabled
+        if (showSystemOutput)
+        {
+            output += line; // Append to bottom
+        }
+        systemOutput += line; // Always append to systemOutput for when toggle is enabled
     }
 
     private void AddUserOutput(string text)
@@ -789,8 +810,8 @@ public class Program
         }
         else
         {
-            // When system output is hidden, show only user output (which includes errors in chronological order)
-            return string.IsNullOrEmpty(userOutput) ? "" : userOutput;
+            // When system output is hidden, show only errors (not program output - that's displayed via JavaScript)
+            return errorOutput; // Return empty string, not HTML comment - the @if in the markup will prevent rendering
         }
     }
 
@@ -801,12 +822,23 @@ public class Program
         _ = ScrollToBottom(); // Fire and forget
     }
 
-    private void ClearOutput()
+    private async void ClearOutput()
     {
         output = "";
         systemOutput = "";
         userOutput = "";
         errorOutput = "";
+        
+        // Also clear any interactive output elements
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("clearInteractiveOutput");
+        }
+        catch
+        {
+            // Ignore errors
+        }
+        
         StateHasChanged();
     }
 
@@ -917,6 +949,13 @@ public class Program
 
     protected override void OnInitialized()
     {
+        // Set welcome message based on system output toggle
+        if (showSystemOutput)
+        {
+            output = WelcomeMessage;
+            systemOutput = WelcomeMessage;
+        }
+        
         // Initialize the display code based on the toggle state
         // On first load, the displayCode is already set to the unindented sample
         // and sourceCode needs to be built from it
@@ -1057,52 +1096,65 @@ public static class Console
     
     public static void WriteLine()
     {
-        _output.AppendLine();
+        // Only append newline if there's already content, to avoid leading blank lines
+        if (_output.Length > 0)
+        {
+            _output.Append("\n");
+        }
     }
     
     public static void WriteLine(string value)
     {
-        _output.AppendLine(value ?? """");
+        _output.Append(value ?? "");
+        _output.Append("\n");
     }
     
     public static void WriteLine(char value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(object value)
     {
-        _output.AppendLine(value?.ToString() ?? """");
+        _output.Append(value?.ToString() ?? "");
+        _output.Append("\n");
     }
     
     public static void WriteLine(int value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(long value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(float value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(double value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(decimal value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void WriteLine(bool value)
     {
-        _output.AppendLine(value.ToString());
+        _output.Append(value.ToString());
+        _output.Append("\n");
     }
     
     public static void Write(string value)
@@ -1154,10 +1206,16 @@ public static class Console
     {
         if (_inputQueue.Count > 0)
         {
-            return _inputQueue.Dequeue();
+            var input = _inputQueue.Dequeue();
+            // Append the input followed by a newline, just like real Console.ReadLine()
+            // This puts the input on the same line as any preceding Write() prompt
+            _output.Append(input);
+            _output.Append("\n");
+            return input;
         }
         
-        throw new System.InvalidOperationException(""READLINE_INPUT_REQUIRED"");
+        // Throw exception to signal we need input
+        throw new System.InvalidOperationException(""INPUT_REQUIRED"");
     }
     
     internal static string GetCapturedOutput()
@@ -1171,19 +1229,9 @@ public static class Console
         _inputQueue.Clear();
     }
     
-    internal static void AddInputLine(string input)
+    internal static void ProvideInput(string input)
     {
         _inputQueue.Enqueue(input ?? """");
-    }
-    
-    internal static bool HasPendingInput()
-    {
-        return _inputQueue.Count > 0;
-    }
-    
-    internal static string GetNextInput()
-    {
-        return _inputQueue.Count > 0 ? _inputQueue.Dequeue() : """";
     }
 }
 ";
@@ -1452,21 +1500,23 @@ public static class Console
 
     private async Task<string> ExecuteWithInteractiveInput(Assembly assembly, MethodInfo mainMethod, Type? consoleType)
     {
+        // Unfortunately, true blocking I/O isn't possible in Blazor WebAssembly's single-threaded environment
+        // We need to use the restart-based approach, but we'll optimize it to minimize visual issues
+        
         try
         {
             var allInputs = new List<string>();
-            var finalOutput = "";
             
             while (true)
             {
-                // Clear the console for this execution attempt
+                // Clear and reset the console for this execution attempt
                 if (consoleType != null)
                 {
                     var clearMethod = consoleType.GetMethod("ClearOutput", BindingFlags.Static | BindingFlags.NonPublic);
                     clearMethod?.Invoke(null, null);
                     
                     // Add all previously collected inputs
-                    var addInputMethod = consoleType.GetMethod("AddInputLine", BindingFlags.Static | BindingFlags.NonPublic);
+                    var addInputMethod = consoleType.GetMethod("ProvideInput", BindingFlags.Static | BindingFlags.NonPublic);
                     foreach (var input in allInputs)
                     {
                         addInputMethod?.Invoke(null, new object[] { input });
@@ -1481,62 +1531,106 @@ public static class Console
                     // Try to execute the program with current inputs
                     mainMethod.Invoke(null, args);
                     
-                    // If we get here, the program completed successfully
+                    // Program completed successfully!
+                    string finalOutput = "";
                     if (consoleType != null)
                     {
                         var getOutputMethod = consoleType.GetMethod("GetCapturedOutput", BindingFlags.Static | BindingFlags.NonPublic);
-                        if (getOutputMethod != null)
-                        {
-                            finalOutput = getOutputMethod.Invoke(null, null) as string ?? "";
-                        }
+                        finalOutput = getOutputMethod?.Invoke(null, null) as string ?? "";
                     }
-                    break; // Success!
+                    
+                    // Display the final output
+                    await DisplayOutput(finalOutput);
+                    return "";
                 }
-                catch (TargetInvocationException ex) when (ex.InnerException?.Message == "READLINE_INPUT_REQUIRED")
+                catch (TargetInvocationException ex) when (ex.InnerException?.Message == "INPUT_REQUIRED")
                 {
-                    // The program needs more input
-                    // Get the current output to show what has been produced so far
+                    // Program is waiting for input
+                    string outputSoFar = "";
                     if (consoleType != null)
                     {
                         var getOutputMethod = consoleType.GetMethod("GetCapturedOutput", BindingFlags.Static | BindingFlags.NonPublic);
-                        if (getOutputMethod != null)
-                        {
-                            var currentOutput = getOutputMethod.Invoke(null, null) as string ?? "";
-                            
-                            // Display the current output (this includes any prompt text)
-                            AddUserOutput(currentOutput);
-                            StateHasChanged();
-                            await ScrollToBottom();
-                        }
+                        outputSoFar = getOutputMethod?.Invoke(null, null) as string ?? "";
                     }
+                    
+                    // Display current output
+                    await DisplayOutput(outputSoFar);
                     
                     // Get input from user
                     var userInput = await JSRuntime.InvokeAsync<string>("promptForInput", "");
                     
-                    // Add this input to our collection
+                    // Add to inputs collection
                     allInputs.Add(userInput);
                     
-                    // Show the user input in the console
-                    AddUserOutput(userInput + "\n");
-                    StateHasChanged();
-                    await ScrollToBottom();
+                    // Clear output before restarting - this removes any leftover DOM elements
+                    await JSRuntime.InvokeVoidAsync("clearAllOutput");
                     
-                    // Continue the loop to restart execution with all inputs
+                    // Loop to restart execution
                     continue;
                 }
             }
-            
-            return finalOutput;
         }
-        catch (TargetInvocationException ex) when (ex.InnerException?.Message == "READLINE_INPUT_REQUIRED")
-        {
-            return "Program execution stopped - more input required than expected.";
-        }
-        catch (TargetInvocationException ex)
+        catch (Exception ex)
         {
             var innerEx = ex.InnerException ?? ex;
             AddErrorOutput($"Execution error: {innerEx.GetType().Name}: {innerEx.Message}", "error");
             return $"Execution error: {innerEx.Message}";
+        }
+    }
+    
+    private async Task DisplayOutput(string outputText)
+    {
+        try
+        {
+            // Clear ALL previous output (including br tags)
+            await JSRuntime.InvokeVoidAsync("clearAllOutput");
+            
+            if (!string.IsNullOrEmpty(outputText))
+            {
+                // Aggressively remove ALL leading blank lines
+                var lines = outputText.Split('\n');
+                int firstNonEmptyLine = 0;
+                for (int i = 0; i < lines.Length; i++)
+                {
+                    if (!string.IsNullOrWhiteSpace(lines[i]))
+                    {
+                        firstNonEmptyLine = i;
+                        break;
+                    }
+                }
+                
+                // Reconstruct output starting from first non-empty line
+                var trimmedOutput = string.Join("\n", lines.Skip(firstNonEmptyLine));
+                
+                await JSRuntime.InvokeVoidAsync("eval", 
+                    $@"(function() {{
+                        const outputElement = document.getElementById('output');
+                        if (!outputElement) return;
+                        
+                        const output = {System.Text.Json.JsonSerializer.Serialize(trimmedOutput)};
+                        
+                        // Render as pre-formatted text to preserve exact whitespace
+                        const preElement = document.createElement('pre');
+                        preElement.textContent = output;
+                        preElement.style.color = '#f0f6fc';
+                        preElement.style.margin = '0';
+                        preElement.style.padding = '0';
+                        preElement.style.fontFamily = 'inherit';
+                        preElement.style.fontSize = 'inherit';
+                        preElement.style.lineHeight = 'inherit';
+                        preElement.style.whiteSpace = 'pre-wrap';
+                        preElement.style.wordWrap = 'break-word';
+                        preElement.className = 'interactive-output';
+                        outputElement.appendChild(preElement);
+                        
+                        window.scrollToBottom('output');
+                    }})()");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Ignore JS errors during output display
+            Console.WriteLine($"Display error: {ex.Message}");
         }
     }
 
