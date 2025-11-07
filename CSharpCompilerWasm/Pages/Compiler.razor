@@ -72,10 +72,9 @@
                         valueSpan.style.color = '#f0f6fc';
                         inputField.parentNode.replaceChild(valueSpan, inputField);
                         
-                        // Add the container to output and then add line break
-                        outputElement.appendChild(inputContainer);
+                        // Add line break after the container (container is already in the DOM)
                         const br = document.createElement('br');
-                        outputElement.appendChild(br);
+                        inputContainer.parentNode.insertBefore(br, inputContainer.nextSibling);
                         
                         // Scroll to bottom
                         window.scrollToBottom('output');
